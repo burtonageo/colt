@@ -326,7 +326,7 @@ mod tests {
         assert!(sph.intersects(&bx));
 
         let sph = Sphere::new(Point3::origin(), 100.0);
-        let bx = BoundingBox::new(Point3::origin(), Vector::splat(1.0));
+        let bx = BoundingBox::from_point_with_extents(Point3::origin(), Vector::splat(1.0));
         assert!(sph.intersects(&bx));
     }
 

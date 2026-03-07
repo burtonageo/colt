@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_hit_oriented() {
         let bbox = {
-            let bbox = BoundingBox::<_, 3>::new(Point::origin(), Vector::splat(3.0));
+            let bbox = BoundingBox::<_, 3>::from_point_with_half_extents(Point::origin(), Vector::splat(3.0));
             Oriented::new(
                 bbox,
                 Quaternion::from_angle_axis(Angle::Degrees(45.0), Vector::Y),

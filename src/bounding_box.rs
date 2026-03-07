@@ -37,6 +37,13 @@ pub struct BoundingBox<T = f32, const N: usize = 3> {
 impl<T, const N: usize> BoundingBox<T, N> {
     #[must_use]
     #[inline]
+    pub const fn from_point_with_half_extents(center: Point<T, N>, half_extents: Vector<T, N>) -> Self {
+        Self { center, half_extents }
+    }
+
+    #[deprecated = "use `BoundingBox::from_point_with_half_extents()` instead"]
+    #[must_use]
+    #[inline]
     pub const fn new(center: Point<T, N>, half_extents: Vector<T, N>) -> Self {
         Self { center, half_extents }
     }
@@ -44,11 +51,11 @@ impl<T, const N: usize> BoundingBox<T, N> {
 
 impl<T: Copy + ClosedAdd + ClosedDiv + One, const N: usize> BoundingBox<T, N> {
     #[inline]
-    pub fn from_point_with_size(center: Point<T, N>, size: Vector<T, N>) -> Self {
+    pub fn from_point_with_extents(center: Point<T, N>, size: Vector<T, N>) -> Self {
         let half_size = {
             size / (T::ONE + T::ONE)
         };
-        Self::new(center, half_size)
+        Self::from_point_with_half_extents(center, half_size)
     }
 }
 
@@ -153,7 +160,7 @@ impl<T: Copy + Zero, const N: usize> BoundingBox<T, N> {
     #[must_use]
     #[inline]
     pub const fn enclosing(point: Point<T, N>) -> Self {
-        Self::new(point, Vector::ZERO)
+        Self::from_point_with_half_extents(point, Vector::ZERO)
     }
 }
 
@@ -224,7 +231,7 @@ where
     pub fn from_min_max_unchecked(min_point: Point<T, N>, max_point: Point<T, N>) -> Self {
         let size = max_point - min_point;
         let center = min_point + (size / (T::ONE + T::ONE));
-        Self::from_point_with_size(center, size)
+        Self::from_point_with_extents(center, size)
     }
 }
 
@@ -250,7 +257,7 @@ where
     #[inline]
     pub fn from_min_with_size(min_point: Point<T, N>, size: Vector<T, N>) -> Self {
         let half_extents = size / (T::ONE + T::ONE);
-        Self::new(min_point + half_extents, half_extents)
+        Self::from_point_with_half_extents(min_point + half_extents, half_extents)
     }
 
     #[must_use]
@@ -461,7 +468,7 @@ where
 
     #[inline]
     fn translated<Trans: Transform<DIM, Scalar = Self::Scalar>>(&self, transform: &Trans) -> Self {
-        let mut ret = Self::new(Zero::ZERO, Zero::ZERO);
+        let mut ret = Self::from_point_with_half_extents(Zero::ZERO, Zero::ZERO);
         for corner in self.corners() {
             ret.enclose(corner.translated(transform));
         }
@@ -786,7 +793,7 @@ mod tests {
         const MAX: f64 = SIZE / 2.0;
         const MIN: f64 = -MAX;
 
-        let bbox = BoundingBox::from_point_with_size(Point3::ZERO, Vector::splat(SIZE + f64::EPSILON));
+        let bbox = BoundingBox::from_point_with_extents(Point3::ZERO, Vector::splat(SIZE + f64::EPSILON));
 
         let (mut x, mut y, mut z) = (MIN, MIN, MIN);
 
@@ -928,7 +935,7 @@ mod tests {
 
     #[test]
     fn test_raycast() {
-        let box_1d = BoundingBox::from_point_with_size(Point::new([1.0]), Vector::new([1.0]));
+        let box_1d = BoundingBox::from_point_with_extents(Point::new([1.0]), Vector::new([1.0]));
         let ray = Ray::new(Point::origin(), Vector::new([-1.0]));
 
         assert_eq!(
@@ -936,7 +943,7 @@ mod tests {
             None
         );
 
-        let box_3d = BoundingBox::from_point_with_size(Point::origin(), Vector::splat(1.0));
+        let box_3d = BoundingBox::from_point_with_extents(Point::origin(), Vector::splat(1.0));
         let ray = Ray::new(Point::new([0.0, 0.0, -5.0]), Vector::Z);
 
         let result = ray::Intersect::intersection_with(&box_3d, &ray).unwrap();
@@ -988,7 +995,7 @@ mod tests {
 
     #[test]
     fn test_planes() {
-        let bbox = BoundingBox::from_point_with_size(Point::origin(), Vector::new([4.0, 4.0, 4.0]));
+        let bbox = BoundingBox::from_point_with_extents(Point::origin(), Vector::new([4.0, 4.0, 4.0]));
         let faces = bbox.face_planes();
         assert_eq!(faces.len(), 6);
 
@@ -1010,7 +1017,7 @@ mod tests {
     #[test]
     fn test_support_point() {
         use crate::ray::Intersect;
-        let cube = BoundingBox::from_point_with_size(Point::origin(), Vector::new([3.0, 8.0, 2.0]));
+        let cube = BoundingBox::from_point_with_extents(Point::origin(), Vector::new([3.0, 8.0, 2.0]));
         let direction = Vector::new([0.3, 0.9, 0.5]).normalized();
 
         let support_point = cube.support_point(&direction);
