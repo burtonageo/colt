@@ -33,15 +33,15 @@ where
         ray: &Ray<Self::Scalar, N>,
     ) -> Option<RayIntersection<Self::Scalar, N>> {
         let origin = self.geometry.origin();
-        let rotated_ray = ray.rotated_around(origin, &self.rotation);
+        let inv_rotation = self.rotation.inverse();
+        let rotated_ray = ray.rotated_around(origin, &inv_rotation);
 
         if let Some(intersection) = self.geometry.intersection_with(&rotated_ray) {
-            let inv_rotation = self.rotation.inverse();
-            let mut n = inv_rotation.transform_vector(intersection.face_normal);
+            let mut n = self.rotation.transform_vector(intersection.face_normal);
             n.normalize();
             let pt = {
                 let v = intersection.position.vector_to(origin);
-                let vr = inv_rotation.transform_vector(v);
+                let vr = self.rotation.transform_vector(v);
                 intersection.position + v - vr
             };
 
@@ -60,7 +60,7 @@ where
 
     #[inline]
     fn intersects(&self, ray: &Ray<Self::Scalar, N>) -> bool {
-        let rotated_ray = ray.rotated_around(self.geometry.origin(), &self.rotation);
+        let rotated_ray = ray.rotated_around(self.geometry.origin(), &self.rotation.inverse());
         self.geometry.intersects(&rotated_ray)
     }
 }

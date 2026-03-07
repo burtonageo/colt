@@ -128,24 +128,23 @@ mod tests {
         vector::Vector,
     };
 
-    #[ignore = "borken for now :-("]
     #[test]
     fn test_hit_oriented() {
         let bbox = {
             let bbox = BoundingBox::<_, 3>::new(Point::origin(), Vector::splat(3.0));
             Oriented::new(
                 bbox,
-                Quaternion::from_angle_axis(Angle::quarter(), Vector::Y),
+                Quaternion::from_angle_axis(Angle::Degrees(45.0), Vector::Y),
             )
         };
 
-        let ray = Ray::new(Point::new([0.1, 0.0, -5.0]), Vector::new([0.0, 0.0, 1.0]));
+        let ray = Ray::new(Point::new([-0.1, 0.0, -5.0]), Vector::new([0.0, 0.0, 1.0]));
 
         let result = bbox.intersection_with(&ray).unwrap();
 
         let angle = Vector::angle_between(result.face_normal, ray.direction);
 
-        assert_eq!(angle.in_degrees(), Angle::quarter().in_degrees());
+        assert_eq!(angle.in_degrees(), Angle::Degrees(135.0).in_degrees());
         assert!(result.is_exterior_face);
     }
 }
