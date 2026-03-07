@@ -1,7 +1,4 @@
-use core::{
-    mem,
-    ops::{Add, DivAssign, Mul, RangeBounds},
-};
+use core::ops::{Add, DivAssign, Mul, RangeBounds};
 use vectral::{
     matrix::Matrix,
     point::Point,
@@ -123,8 +120,8 @@ impl<T, const N: usize> Intersection<T, N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Oriented, ray::Intersect as RayIntersect, ray::Ray};
     use crate::bounding_box::BoundingBox;
+    use crate::{Oriented, ray::Intersect as RayIntersect, ray::Ray};
     use vectral::{
         point::Point,
         rotation::{angle::Angle, quaternion::Quaternion},
@@ -152,4 +149,3 @@ mod tests {
         assert!(result.is_exterior_face);
     }
 }
-
