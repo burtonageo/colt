@@ -121,44 +121,6 @@ impl<T, const N: usize> Intersection<T, N> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct RaySegment<T = f32, const N: usize = 3> {
-    pub ray: Ray<T, N>,
-    pub min_t: T,
-    pub max_t: T,
-}
-
-impl<T: PartialOrd, const N: usize> RaySegment<T, N> {
-    #[must_use]
-    #[inline]
-    pub fn new(ray: Ray<T, N>, mut min_t: T, mut max_t: T) -> Self {
-        if min_t > max_t {
-            mem::swap(&mut min_t, &mut max_t);
-        }
-
-        Self { ray, min_t, max_t }
-    }
-
-    #[must_use]
-    #[inline]
-    pub const fn new_unchecked(ray: Ray<T, N>, min_t: T, max_t: T) -> Self {
-        Self { ray, min_t, max_t }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct RayTransport<T = f32, const N: usize = 3> {
-    pub ray_segment: RaySegment<T, N>,
-    pub depth: usize,
-    pub time: T,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct RayDifferential<T = f32, const N: usize = 3> {
-    pub ray: RayTransport<T, N>,
-    pub has_differentials: bool,
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{Oriented, ray::Intersect as RayIntersect, ray::Ray};
