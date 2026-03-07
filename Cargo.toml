@@ -7,3 +7,13 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/burtonageo/colt"
 
 [dependencies]
+approx = "0.5.1"
+
+[dependencies.vectral]
+git = "https://github.com/burtonageo/vectral.git"
+default-features = false
+features = ["std", "nightly", "approx", "simd"]
+
+[features]
+default = []
+std = ["vectral/std"]
