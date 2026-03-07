@@ -121,7 +121,7 @@ impl<T, const N: usize> Intersection<T, N> {
 #[cfg(test)]
 mod tests {
     use crate::bounding_box::BoundingBox;
-    use crate::{Oriented, ray::Intersect as RayIntersect, ray::Ray};
+    use crate::{oriented::Oriented, ray::Intersect as RayIntersect, ray::Ray};
     use vectral::{
         point::Point,
         rotation::{angle::Angle, quaternion::Quaternion},
