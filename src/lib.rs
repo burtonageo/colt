@@ -33,7 +33,6 @@ pub trait Volume<const DIM: usize> {
     #[must_use]
     fn origin(&self) -> Point<Self::Scalar, DIM>;
 
-    #[must_use]
     fn set_origin(&mut self, new_origin: Point<Self::Scalar, DIM>);
 
     #[must_use]
