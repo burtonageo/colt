@@ -1,5 +1,9 @@
-use crate::{Volume, ray::{Intersect as RayIntersect, Intersection as RayIntersection, Ray}};
+use crate::{
+    Volume,
+    ray::{Intersect as RayIntersect, Intersection as RayIntersection, Ray},
+};
 use core::ops::DivAssign;
+use vectral::{num::ClosedDiv, point::Point, rotation::rotate_point_around, vector::Vector};
 use vectral::{
     rotation::Rotation,
     utils::num::{ClosedAdd, ClosedMul, ClosedSub, One, Sqrt, Zero},
@@ -16,6 +20,37 @@ impl<T, R, const N: usize> Oriented<T, R, N> {
     #[inline]
     pub const fn new(geometry: T, rotation: R) -> Self {
         Self { geometry, rotation }
+    }
+}
+
+impl<T: Volume<N>, R, const N: usize> Volume<N> for Oriented<T, R, N>
+where
+    T::Scalar: Copy + Zero + ClosedDiv + ClosedSub + ClosedAdd + ClosedMul,
+    R: Rotation<N, Scalar = <T as Volume<N>>::Scalar> + Copy,
+{
+    type Scalar = T::Scalar;
+
+    #[inline]
+    fn origin(&self) -> Point<Self::Scalar, N> {
+        self.geometry.origin()
+    }
+
+    #[inline]
+    fn set_origin(&mut self, new_origin: Point<Self::Scalar, N>) {
+        self.geometry.set_origin(new_origin);
+    }
+
+    #[inline]
+    fn contains(&self, point: &Point<Self::Scalar, N>) -> bool {
+        let origin = self.origin();
+        let rotated_point = rotate_point_around(*point, origin, self.rotation);
+        self.geometry.contains(&rotated_point)
+    }
+
+    #[inline]
+    fn support_point(&self, direction: &Vector<Self::Scalar, N>) -> Point<Self::Scalar, N> {
+        let unrotated_support = self.geometry.support_point(direction);
+        rotate_point_around(unrotated_support, self.origin(), self.rotation)
     }
 }
 
