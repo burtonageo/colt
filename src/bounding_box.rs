@@ -1,17 +1,16 @@
 use crate::{
-    Intersect, Intersection, RayIntersection, Volume,
+    Intersect, Intersection, RayIntersection, Volume, array_assume_init,
     ball::Ball,
     line_overlap,
     plane::Plane,
     ray::{self, Ray},
-    array_assume_init,
 };
 use approx::AbsDiffEq;
 use core::{
     cmp::{Ordering, PartialOrd, max_by, min_by},
     marker::PhantomData,
     mem::MaybeUninit,
-    ops::{AddAssign, DivAssign, Sub},
+    ops::{AddAssign, DivAssign, Mul, Sub},
 };
 use vectral::{
     matrix::Matrix,
@@ -22,7 +21,7 @@ use vectral::{
             Bounded, ClosedAdd, ClosedDiv, ClosedMul, ClosedNeg, ClosedSub, Float, One, Scalar,
             Signed, Sqrt, Zero,
         },
-        product, zip_map,
+        zip_map,
     },
     vector::Vector,
 };
@@ -37,24 +36,31 @@ pub struct BoundingBox<T = f32, const N: usize = 3> {
 impl<T, const N: usize> BoundingBox<T, N> {
     #[must_use]
     #[inline]
-    pub const fn from_point_with_half_extents(center: Point<T, N>, half_extents: Vector<T, N>) -> Self {
-        Self { center, half_extents }
+    pub const fn from_point_with_half_extents(
+        center: Point<T, N>,
+        half_extents: Vector<T, N>,
+    ) -> Self {
+        Self {
+            center,
+            half_extents,
+        }
     }
 
     #[deprecated = "use `BoundingBox::from_point_with_half_extents()` instead"]
     #[must_use]
     #[inline]
     pub const fn new(center: Point<T, N>, half_extents: Vector<T, N>) -> Self {
-        Self { center, half_extents }
+        Self {
+            center,
+            half_extents,
+        }
     }
 }
 
 impl<T: Copy + ClosedAdd + ClosedDiv + One, const N: usize> BoundingBox<T, N> {
     #[inline]
     pub fn from_point_with_extents(center: Point<T, N>, size: Vector<T, N>) -> Self {
-        let half_size = {
-            size / (T::ONE + T::ONE)
-        };
+        let half_size = { size / (T::ONE + T::ONE) };
         Self::from_point_with_half_extents(center, half_size)
     }
 }
@@ -263,7 +269,10 @@ where
     #[must_use]
     #[inline]
     pub fn to_min_max(self) -> (Point<T, N>, Point<T, N>) {
-        (self.center - self.half_extents, self.center + self.half_extents)
+        (
+            self.center - self.half_extents,
+            self.center + self.half_extents,
+        )
     }
 }
 
@@ -444,8 +453,7 @@ where
     #[must_use]
     #[inline]
     pub fn volume(&self) -> T::Output {
-        let array = self.size().to_array();
-        product(array)
+        self.size().to_array().into_iter().fold(T::ONE, Mul::mul)
     }
 }
 
@@ -793,7 +801,8 @@ mod tests {
         const MAX: f64 = SIZE / 2.0;
         const MIN: f64 = -MAX;
 
-        let bbox = BoundingBox::from_point_with_extents(Point3::ZERO, Vector::splat(SIZE + f64::EPSILON));
+        let bbox =
+            BoundingBox::from_point_with_extents(Point3::ZERO, Vector::splat(SIZE + f64::EPSILON));
 
         let (mut x, mut y, mut z) = (MIN, MIN, MIN);
 
@@ -995,7 +1004,8 @@ mod tests {
 
     #[test]
     fn test_planes() {
-        let bbox = BoundingBox::from_point_with_extents(Point::origin(), Vector::new([4.0, 4.0, 4.0]));
+        let bbox =
+            BoundingBox::from_point_with_extents(Point::origin(), Vector::new([4.0, 4.0, 4.0]));
         let faces = bbox.face_planes();
         assert_eq!(faces.len(), 6);
 
@@ -1017,7 +1027,8 @@ mod tests {
     #[test]
     fn test_support_point() {
         use crate::ray::Intersect;
-        let cube = BoundingBox::from_point_with_extents(Point::origin(), Vector::new([3.0, 8.0, 2.0]));
+        let cube =
+            BoundingBox::from_point_with_extents(Point::origin(), Vector::new([3.0, 8.0, 2.0]));
         let direction = Vector::new([0.3, 0.9, 0.5]).normalized();
 
         let support_point = cube.support_point(&direction);
