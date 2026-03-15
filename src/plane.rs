@@ -23,7 +23,7 @@ impl<T, const N: usize> Plane<T, N> {
     }
 }
 
-impl<T: Scalar + Sqrt, const N: usize> Plane<T, N> {
+impl<T: Copy + Scalar + Sqrt, const N: usize> Plane<T, N> {
     #[must_use]
     #[inline]
     pub fn new(mut normal: Vector<T, N>, distance: T) -> Option<Self> {

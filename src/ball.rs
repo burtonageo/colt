@@ -85,10 +85,7 @@ where
     }
 }
 
-impl<T, const N: usize> Intersect<Self, N> for Ball<T, N>
-where
-    T: Scalar + Sqrt,
-{
+impl<T: Copy + Scalar + Sqrt, const N: usize> Intersect<Self, N> for Ball<T, N> {
     #[inline]
     fn intersects(&self, other: &Self) -> bool {
         let dist = (self.center - other.center).len_squared();
