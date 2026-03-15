@@ -24,6 +24,6 @@ optional = true
 
 [features]
 default = ["std"]
-libm = ["dep:libm, vectral/libm"]
+libm = ["dep:libm", "vectral/libm"]
 std = ["vectral/std"]
 serde = ["dep:serde_core", "vectral/serde"]
