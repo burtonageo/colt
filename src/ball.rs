@@ -6,9 +6,9 @@ use crate::{
     ray::{self, Ray},
 };
 #[cfg(feature = "serde")]
-use serde_core::de;
-#[cfg(feature = "serde")]
 use core::marker::PhantomData;
+#[cfg(feature = "serde")]
+use serde_core::de;
 use vectral::{
     matrix::Matrix,
     point::Point,
@@ -280,7 +280,7 @@ impl<T: serde_core::Serialize, const N: usize> serde_core::Serialize for Ball<T,
 }
 
 #[cfg(feature = "serde")]
-impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Ball<T, N> {
+impl<'de, T: Default + de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Ball<T, N> {
     #[inline]
     fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use core::fmt;
@@ -319,7 +319,7 @@ impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Ball
 
         struct Visitor<T, const N: usize>(PhantomData<Ball<T, N>>);
 
-        impl<'de, T: de::Deserialize<'de>, const N: usize> de::Visitor<'de> for Visitor<T, N> {
+        impl<'de, T: Default + de::Deserialize<'de>, const N: usize> de::Visitor<'de> for Visitor<T, N> {
             type Value = Ball<T, N>;
             #[inline]
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -328,12 +328,26 @@ impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Ball
 
             #[inline]
             fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-                let center = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                struct InvalidLength(usize);
+
+                impl de::Expected for InvalidLength {
+                    #[inline]
+                    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        write!(formatter, "a sequence of length {}", self.0)
+                    }
+                }
+
                 let radius = seq
                     .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                    .ok_or_else(|| de::Error::invalid_length(0, &InvalidLength(N + 1)))?;
+
+                let mut center = Point::default();
+
+                for i in 0..N {
+                    center[i] = seq
+                        .next_element()?
+                        .ok_or_else(|| de::Error::invalid_length(i + 1, &InvalidLength(N + 1)))?;
+                }
 
                 Ok(Ball::new(center, radius))
             }

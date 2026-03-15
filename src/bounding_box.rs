@@ -882,7 +882,7 @@ impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Boun
                 let half_extents = half_extents.ok_or_else(|| de::Error::missing_field("half_extents"))?;
                 let center = center.ok_or_else(|| de::Error::missing_field("center"))?;
 
-                Ok(Ball::from_point_with_half_extents(center, radius))
+                Ok(BoundingBox::from_point_with_half_extents(center, half_extents))
             }
         }
 

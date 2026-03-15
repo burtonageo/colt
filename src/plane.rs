@@ -10,6 +10,8 @@ use vectral::{
     },
     vector::Vector,
 };
+#[cfg(feature = "serde")]
+use core::{marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Plane<T, const N: usize> {
@@ -292,13 +294,13 @@ impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Plan
 
                 while let Some(key) = map.next_key()? {
                     match key {
-                        Field::HalfExtents => {
+                        Field::Normal => {
                             if fields.0.is_some() {
                                 return Err(de::Error::duplicate_field("normal"));
                             }
                             fields.0 = Some(map.next_value::<Vector<T, N>>()?);
                         }
-                        Field::Center => {
+                        Field::Distance => {
                             if fields.1.is_some() {
                                 return Err(de::Error::duplicate_field("distance"));
                             }
