@@ -1,6 +1,8 @@
 use crate::{ball::Ball, ray};
 use approx::AbsDiffEq;
 use core::{cmp::PartialOrd, ops::Neg};
+#[cfg(feature = "serde")]
+use serde_core::de;
 use vectral::{
     point::Point,
     utils::num::{
@@ -200,5 +202,125 @@ where
         Some((point, radius))
     } else {
         None
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T: serde_core::Serialize, const N: usize> serde_core::Serialize for Plane<T, N> {
+    #[inline]
+    fn serialize<S: serde_core::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if serializer.is_human_readable() {
+            use serde_core::ser::SerializeStruct;
+
+            let mut s = serializer.serialize_struct("Plane", 2)?;
+            s.serialize_field("normal", &self.normal)?;
+            s.serialize_field("distance", &self.distance)?;
+            s.end()
+        } else {
+            use serde_core::ser::SerializeTuple;
+
+            let mut s = serializer.serialize_tuple(2)?;
+            s.serialize_element(&self.normal)?;
+            s.serialize_element(&self.distance)?;
+            s.end()
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Plane<T, N> {
+    #[inline]
+    fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use core::fmt;
+
+        enum Field {
+            Normal,
+            Distance,
+        }
+
+        impl<'de> de::Deserialize<'de> for Field {
+            #[inline]
+            fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                struct FieldVisitor;
+
+                impl de::Visitor<'_> for FieldVisitor {
+                    type Value = Field;
+
+                    #[inline]
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`normal` or `distance`")
+                    }
+
+                    #[inline]
+                    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                        match v {
+                            "normal" => Ok(Field::Normal),
+                            "distance" => Ok(Field::Distance),
+                            _ => return Err(de::Error::unknown_field(v, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct Visitor<T, const N: usize>(PhantomData<Ball<T, N>>);
+
+        impl<'de, T: de::Deserialize<'de>, const N: usize> de::Visitor<'de> for Visitor<T, N> {
+            type Value = Plane<T, N>;
+            #[inline]
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct Plane")
+            }
+
+            #[inline]
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let normal = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let distance = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+                Ok(Plane::new_unnormalised(normal, distance))
+            }
+
+            #[inline]
+            fn visit_map<A: de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut fields = (None, None);
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::HalfExtents => {
+                            if fields.0.is_some() {
+                                return Err(de::Error::duplicate_field("normal"));
+                            }
+                            fields.0 = Some(map.next_value::<Vector<T, N>>()?);
+                        }
+                        Field::Center => {
+                            if fields.1.is_some() {
+                                return Err(de::Error::duplicate_field("distance"));
+                            }
+                            fields.1 = Some(map.next_value::<T>()?);
+                        }
+                    }
+                }
+
+                let (normal, distance) = fields;
+                let normal = normal.ok_or_else(|| de::Error::missing_field("normal"))?;
+                let distance = distance.ok_or_else(|| de::Error::missing_field("distance"))?;
+
+                Ok(Plane::new_unnormalised(normal, distance))
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &["normal", "distance"];
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_struct("Plane", FIELDS, Visitor::<T, N>(PhantomData))
+        } else {
+            deserializer.deserialize_seq(Visitor::<T, N>(PhantomData))
+        }
     }
 }

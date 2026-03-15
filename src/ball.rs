@@ -5,6 +5,10 @@ use crate::{
     plane::{Plane, ball_inside_plane, ball_intersects_plane_point},
     ray::{self, Ray},
 };
+#[cfg(feature = "serde")]
+use serde_core::de;
+#[cfg(feature = "serde")]
+use core::marker::PhantomData;
 use vectral::{
     matrix::Matrix,
     point::Point,
@@ -246,6 +250,130 @@ impl<T: Scalar + Sqrt + Signed, const DIM: usize> ray::Intersect<DIM> for Ball<T
     fn intersects(&self, ray: &Ray<Self::Scalar, DIM>) -> bool {
         self.calculate_ray_distance_to_intersection_point(ray)
             .is_some()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T: serde_core::Serialize, const N: usize> serde_core::Serialize for Ball<T, N> {
+    #[inline]
+    fn serialize<S: serde_core::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if serializer.is_human_readable() {
+            use serde_core::ser::SerializeStruct;
+
+            let mut s = serializer.serialize_struct("Ball", 2)?;
+            s.serialize_field("radius", &self.radius)?;
+            s.serialize_field("center", &self.center)?;
+            s.end()
+        } else {
+            use serde_core::ser::SerializeSeq;
+
+            let mut s = serializer.serialize_seq(Some(N + 1))?;
+
+            s.serialize_element(&self.radius)?;
+            for element in self.center.iter() {
+                s.serialize_element(element)?;
+            }
+
+            s.end()
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T: de::Deserialize<'de>, const N: usize> de::Deserialize<'de> for Ball<T, N> {
+    #[inline]
+    fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use core::fmt;
+
+        enum Field {
+            Radius,
+            Center,
+        }
+
+        impl<'de> de::Deserialize<'de> for Field {
+            #[inline]
+            fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                struct FieldVisitor;
+
+                impl de::Visitor<'_> for FieldVisitor {
+                    type Value = Field;
+
+                    #[inline]
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`radius` or `center`")
+                    }
+
+                    #[inline]
+                    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                        match v {
+                            "radius" => Ok(Field::Radius),
+                            "center" => Ok(Field::Center),
+                            _ => return Err(de::Error::unknown_field(v, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct Visitor<T, const N: usize>(PhantomData<Ball<T, N>>);
+
+        impl<'de, T: de::Deserialize<'de>, const N: usize> de::Visitor<'de> for Visitor<T, N> {
+            type Value = Ball<T, N>;
+            #[inline]
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct Ball")
+            }
+
+            #[inline]
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let center = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let radius = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+                Ok(Ball::new(center, radius))
+            }
+
+            #[inline]
+            fn visit_map<A: de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut fields = (None, None);
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Radius => {
+                            if fields.0.is_some() {
+                                return Err(de::Error::duplicate_field("radius"));
+                            }
+                            fields.0 = Some(map.next_value::<T>()?);
+                        }
+                        Field::Center => {
+                            if fields.1.is_some() {
+                                return Err(de::Error::duplicate_field("center"));
+                            }
+                            fields.1 = Some(map.next_value::<Point<T, N>>()?);
+                        }
+                    }
+                }
+
+                let (radius, center) = fields;
+                let radius = radius.ok_or_else(|| de::Error::missing_field("radius"))?;
+                let center = center.ok_or_else(|| de::Error::missing_field("center"))?;
+
+                Ok(Ball::new(center, radius))
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &["radius", "center"];
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_struct("Ball", FIELDS, Visitor::<T, N>(PhantomData))
+        } else {
+            deserializer.deserialize_seq(Visitor::<T, N>(PhantomData))
+        }
     }
 }
 
