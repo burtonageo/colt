@@ -122,6 +122,7 @@ impl<T, const N: usize> Intersection<T, N> {
 mod tests {
     use crate::bounding_box::BoundingBox;
     use crate::{oriented::Oriented, ray::Intersect as RayIntersect, ray::Ray};
+    use approx::{AbsDiffEq, assert_relative_eq};
     use vectral::{
         point::Point,
         rotation::{angle::Angle, quaternion::Quaternion},
@@ -130,6 +131,12 @@ mod tests {
 
     #[test]
     fn test_hit_oriented() {
+        let epsilon = if cfg!(miri) {
+            1e-64
+        } else {
+            <f64 as AbsDiffEq>::default_epsilon()
+        };
+
         let bbox = {
             let bbox = BoundingBox::<_, 3>::from_point_with_half_extents(Point::origin(), Vector::splat(3.0));
             Oriented::new(
@@ -144,7 +151,7 @@ mod tests {
 
         let angle = Vector::angle_between(result.face_normal, ray.direction);
 
-        assert_eq!(angle.in_degrees(), Angle::Degrees(135.0).in_degrees());
+        assert_relative_eq!(angle.in_degrees(), Angle::Degrees(135.0).in_degrees(), epsilon = epsilon);
         assert!(result.is_exterior_face);
     }
 }
